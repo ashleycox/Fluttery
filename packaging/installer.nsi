@@ -81,6 +81,21 @@ Var ShortcutOptionsMode
     ${EndIf}
 !macroend
 
+; The NSIS instruction requires the path to exist. Setup validates folders before creating them.
+!macro NormalizePath path output
+    Push $8
+    Push $9
+    StrCpy $8 "${path}"
+    System::Call 'kernel32::GetFullPathNameW(w r8, i ${NSIS_MAX_STRLEN}, w .s, p 0) i.r9'
+    Pop ${output}
+    ${If} $9 = 0
+    ${OrIf} $9 >= ${NSIS_MAX_STRLEN}
+        StrCpy ${output} ""
+    ${EndIf}
+    Pop $9
+    Pop $8
+!macroend
+
 !macro RejectReparseAncestors invalid
     StrCpy $1 "$INSTDIR"
     ${Do}
@@ -96,7 +111,7 @@ Var ShortcutOptionsMode
 !macroend
 
 !macro RemoveStartMenuShortcuts folder
-    GetFullPathName $R0 "$SMPROGRAMS\${folder}"
+    !insertmacro NormalizePath "$SMPROGRAMS\${folder}" $R0
     StrLen $R1 "$SMPROGRAMS\"
     StrCpy $R2 $R0 $R1
     ${If} $R2 == "$SMPROGRAMS\"
@@ -188,7 +203,13 @@ SectionEnd
 Function .onInit
     Call ValidateTargetPlatform
     SetRegView 64
+    ; NSIS passes /D in $INSTDIR before MultiUser selects the scope's default.
+    Push $INSTDIR
     !insertmacro MULTIUSER_INIT
+    Pop $0
+    ${If} $0 != ""
+        StrCpy $INSTDIR $0
+    ${EndIf}
 FunctionEnd
 
 Function ValidateTargetPlatform
@@ -245,7 +266,7 @@ Function .onInstFailed
 FunctionEnd
 
 Function ValidateInstallLocation
-    GetFullPathName $INSTDIR "$INSTDIR"
+    !insertmacro NormalizePath "$INSTDIR" $INSTDIR
     ${GetRoot} "$INSTDIR" $0
     ${If} $0 == ""
     ${OrIf} $INSTDIR == $0
@@ -307,7 +328,7 @@ Function ValidateStartMenu
     ${If} $StartMenuFolder == ""
         StrCpy $StartMenuFolder "Fluttery"
     ${EndIf}
-    GetFullPathName $0 "$SMPROGRAMS\$StartMenuFolder"
+    !insertmacro NormalizePath "$SMPROGRAMS\$StartMenuFolder" $0
     StrLen $1 "$SMPROGRAMS\"
     StrCpy $2 $0 $1
     ${If} $2 != "$SMPROGRAMS\"
