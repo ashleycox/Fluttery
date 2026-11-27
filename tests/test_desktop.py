@@ -226,6 +226,7 @@ def exercise_desktop(frame, driver, monkeypatch, tmp_path):
         frame.log_measurement('thd', [{'timestamp': time.time(), 'thd': 0.2, 'thdn': 0.3}])
         frame.session['metadata']['equipment'] = 'Reference deck'
         frame.results.session_path = filename
+        frame.workspace.navigate('measure', frame=frame)
         command = get_item(get_menu(frame, 'Wow & Flutter'), 'Clear Wow and Flutter History')
         invoke(frame, command)
         assert not frame.session['history'] and frame.session['measurementLog']
